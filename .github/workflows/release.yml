@@ -1,0 +1,70 @@
+name: Build and upload assets
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          TARGET: linux-gnu/amd64
+        - os: windows-latest
+          TARGET: windows-msvc/amd64
+    name: Build on ${{ matrix.TARGET }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Build on Linux GNU
+        if: matrix.TARGET == 'linux-gnu/amd64'
+        run: |
+          sudo apt -y install git build-essential cmake automake libtool autoconf
+          cd scripts
+          ./build_deps.sh
+          ls -la deps/
+          cd ..
+          mkdir build && cd build
+          cmake .. -DXMRIG_DEPS=scripts/deps
+          make -j$(nproc)
+          ls -la ./xmrig
+          cp xmrig ../
+          cp ../src/config.json ../
+          cd ..
+          zip -r xmrig-linux-amd64.zip xmrig config.json
+
+      - name: Setup Windows and Build
+        if: matrix.TARGET == 'windows-msvc/amd64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc make mingw-w64-x86_64-7zip
+
+      - name: Install CMake and get deps
+        if: matrix.TARGET == 'windows-msvc/amd64'
+        shell: powershell
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          git clone https://github.com/xmrig/xmrig-deps.git
+
+      - name: Build on Windows
+        if: matrix.TARGET == 'windows-msvc/amd64'
+        shell: msys2 {0}
+        run: |
+          "c:\Program Files\CMake\bin\cmake.exe" . -G "Unix Makefiles" -DXMRIG_DEPS=D:/a/xmrig/xmrig/xmrig-deps/gcc/x64
+          make -j$(nproc)
+          ls -la ./xmrig.exe
+          cp src/config.json .
+          cp bin/WinRing0/WinRing0x64.sys .
+          7z a -tzip -mx xmrig-windows-amd64.zip xmrig.exe config.json WinRing0x64.sys
+
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.zip

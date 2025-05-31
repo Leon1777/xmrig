@@ -51,7 +51,7 @@ jobs:
         if: matrix.TARGET == 'windows-msvc/amd64'
         shell: msys2 {0}
         run: |
-          "c:\Program Files\CMake\bin\cmake.exe" . -G "Unix Makefiles" -DXMRIG_DEPS=D:/a/xmrig/xmrig/xmrig-deps/gcc/x64
+          "c:\Program Files\CMake\bin\cmake.exe" . -G "Unix Makefiles" -DXMRIG_DEPS=D:/a/xmrig/xmrig/xmrig-deps/gcc/x64 -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
           ls -la ./xmrig.exe
           cp src/config.json .
